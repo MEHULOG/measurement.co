@@ -140,12 +140,12 @@ If step 6 doesn't happen, check:
 Paste your values here as you go. Then run the `npx convex env set` commands above.
 
 ```
-POLAR_ACCESS_TOKEN          = ____
-POLAR_PRODUCT_ID_MONTHLY    = ____
+POLAR_ACCESS_TOKEN          = __polar_oat_s2a4qfUSv4KfS4ZUcyNPULkt1o2Vh0JRjsl462QlLky__
+POLAR_PRODUCT_ID_MONTHLY    = _d1806d4f-9471-4de9-9c0f-4e00c7e17190___
 POLAR_PRODUCT_ID_YEARLY     = ____
-POLAR_WEBHOOK_SECRET        = ____
+POLAR_WEBHOOK_SECRET        = _polar_whs_D6FIHYDkmquml37X46BeyWJ8ZHQont2A4BK9j2ncmUc___
 POLAR_SERVER                = ____   # sandbox | production
-APP_PUBLIC_URL              = ____
+APP_PUBLIC_URL              = ____https://polar.sh/dashboard/measurement
 
 Webhook URL configured in Polar:
   ____

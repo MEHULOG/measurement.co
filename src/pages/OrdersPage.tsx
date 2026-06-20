@@ -67,7 +67,6 @@ export default function OrdersPage() {
   return (
     <FeatureGate
       feature="Orders"
-      requirePaid
       description="Track customer orders end-to-end with status workflow, delivery audit, and team-wide visibility."
       benefits={[
         'Pending → in progress → ready → delivered workflow',

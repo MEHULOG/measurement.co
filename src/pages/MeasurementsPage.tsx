@@ -139,11 +139,10 @@ export default function MeasurementsPage() {
       {/* Two choice cards (only shown when nothing is open) */}
       {mode === null && <ChoiceCards onCamera={() => setMode('camera')} onWrite={() => openForm()} />}
 
-      {/* Inline camera — gated to active paid subscribers */}
+      {/* Inline camera — gated to active subscription (trial counts) */}
       {mode === 'camera' && (
         <FeatureGate
           feature="camera measurement"
-          requirePaid
           description="Capture real-world dimensions from your phone or webcam — no manual data entry."
           benefits={[
             'Tap-to-measure with reference scaling (credit card, A4, etc.)',
@@ -400,15 +399,17 @@ function ChoiceCards({
   onWrite: () => void
 }) {
   const { data } = useSubscription()
-  const isPro = data?.reason === 'active'
+  // Lock indicator shows only when access is fully gone — trial users get
+  // through, just like the FeatureGate.
+  const locked = data?.allowed === false
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <ChoiceCard
         icon={Camera}
         title="Measure with camera"
         description="Use a reference object (credit card, A4) and tap two endpoints — we calculate the real distance."
-        cta={isPro ? 'Open camera' : 'Open camera (Pro)'}
-        proRequired={!isPro}
+        cta={locked ? 'Open camera (Pro)' : 'Open camera'}
+        proRequired={locked}
         onClick={onCamera}
       />
       <ChoiceCard
