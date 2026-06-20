@@ -57,13 +57,20 @@ export const store = mutation({
     const userCount = (await ctx.db.query('users').collect()).length
     const role = userCount === 0 ? 'admin' : 'employee'
 
+    const now = Date.now()
+    const TRIAL_DAYS = 3
+    const trialEndsAt = now + TRIAL_DAYS * 24 * 60 * 60 * 1000
+
     return await ctx.db.insert('users', {
       clerkId: identity.subject,
       email: identity.email ?? 'unknown@example.com',
       name: identity.name ?? identity.email ?? 'Anonymous',
       imageUrl: identity.pictureUrl ?? undefined,
       role,
-      createdAt: Date.now(),
+      createdAt: now,
+      // 3-day free trial starts automatically on first login
+      subscriptionStatus: 'trialing',
+      trialEndsAt,
     })
   },
 })

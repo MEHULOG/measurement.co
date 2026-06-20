@@ -5,6 +5,8 @@ import {
   FileBarChart,
   Users,
   UserCircle,
+  CreditCard,
+  Truck,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -13,8 +15,10 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 const nav = [
   { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/app/measurements', label: 'Measurements', icon: Ruler },
+  { to: '/app/orders', label: 'Orders', icon: Truck },
   { to: '/app/reports', label: 'Reports', icon: FileBarChart },
   { to: '/app/users', label: 'Users', icon: Users, adminOnly: true },
+  { to: '/app/billing', label: 'Billing', icon: CreditCard },
   { to: '/app/profile', label: 'Profile', icon: UserCircle },
 ]
 

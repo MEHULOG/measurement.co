@@ -4,6 +4,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/Button'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { Badge } from '@/components/ui/Badge'
+import { TrialBadge } from '@/components/TrialBadge'
 
 interface TopbarProps {
   onOpenMobileMenu: () => void
@@ -22,20 +23,9 @@ export function Topbar({ onOpenMobileMenu }: TopbarProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div>
-          <div className="text-sm font-semibold leading-tight">
-            Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {new Date().toLocaleDateString(undefined, {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </div>
-        </div>
       </div>
       <div className="flex items-center gap-2">
+        <TrialBadge />
         {user && (
           <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
             {user.role}

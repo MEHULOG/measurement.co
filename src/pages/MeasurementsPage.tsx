@@ -1,21 +1,20 @@
 import { useMemo, useState } from 'react'
 import { useConvexAuth, useMutation, useQuery } from 'convex/react'
-import { api } from '../../convex/_generated/api'
 import { toast } from 'sonner'
 import {
-  Plus,
-  Search,
+  Camera,
   Pencil,
+  ArrowRight,
+  Search,
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Camera,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react'
+import { api } from '../../convex/_generated/api'
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/Card'
@@ -32,44 +31,44 @@ import {
 import { CameraMeasure } from '@/components/CameraMeasure'
 import { formatDateShort } from '@/lib/utils'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { cn } from '@/lib/utils'
 import type { MeasurementWithUsers } from '@/types'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 8
 
+type Mode = null | 'camera' | 'form'
+
+/**
+ * Stripped-down Measurements page: two big actions only.
+ *  • "Measure with camera" → inline reference-scaled capture, then
+ *    pre-fills the measurement form.
+ *  • "Write a measurement" → opens the manual form directly.
+ * Listing / filtering / deletion live on the dashboard now.
+ */
 export default function MeasurementsPage() {
   const { user } = useCurrentUser()
-  const [search, setSearch] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [customer, setCustomer] = useState('')
-  const [page, setPage] = useState(1)
+  const { isAuthenticated } = useConvexAuth()
+  const [mode, setMode] = useState<Mode>(null)
+  const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<MeasurementWithUsers | null>(null)
-  const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<MeasurementWithUsers | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [cameraOpen, setCameraOpen] = useState(false)
-  const [lastCapture, setLastCapture] = useState<{
-    lengthMm: number
-    lengthCm: number
+  const [prefill, setPrefill] = useState<{
+    length: number
     at: number
   } | null>(null)
-
-  const { isAuthenticated } = useConvexAuth()
-  const data = useQuery(
-    api.measurements.list,
-    isAuthenticated
-      ? {
-          search: search || undefined,
-          customer: customer || undefined,
-          startDate: startDate ? new Date(startDate).getTime() : undefined,
-          endDate: endDate ? new Date(endDate + 'T23:59:59').getTime() : undefined,
-        }
-      : 'skip',
-  )
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
   const create = useMutation(api.measurements.create)
   const update = useMutation(api.measurements.update)
   const remove = useMutation(api.measurements.remove)
+
+  // List of measurements created (this user's, or all if admin)
+  const data = useQuery(
+    api.measurements.list,
+    isAuthenticated ? { search: search || undefined } : 'skip',
+  ) as MeasurementWithUsers[] | undefined
 
   const totalPages = Math.max(1, Math.ceil((data?.length ?? 0) / PAGE_SIZE))
   const paged = useMemo(
@@ -80,14 +79,15 @@ export default function MeasurementsPage() {
   const canEdit = (m: MeasurementWithUsers) =>
     user?.role === 'admin' || m.createdBy === user?._id
 
-  async function handleCreate(values: MeasurementFormValues) {
+  async function handleSubmit(values: MeasurementFormValues) {
     setSubmitting(true)
     try {
       await create(values)
-      toast.success('Measurement created')
-      setCreating(false)
+      toast.success('Measurement saved')
+      setFormOpen(false)
+      setPrefill(null)
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to create measurement')
+      toast.error(e?.message ?? 'Failed to save measurement')
     } finally {
       setSubmitting(false)
     }
@@ -113,280 +113,260 @@ export default function MeasurementsPage() {
       await remove({ id: deleting._id })
       toast.success(`Deleted ${deleting.code}`)
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete measurement')
+      toast.error(e?.message ?? 'Failed to delete')
     }
   }
 
+  function openForm(prefilled?: { length: number }) {
+    if (prefilled) setPrefill({ ...prefilled, at: Date.now() })
+    else setPrefill(null)
+    setFormOpen(true)
+    setMode(null)
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Measurements</h1>
-          <p className="text-sm text-muted-foreground">
-            Add, edit, search, and filter customer measurements.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={cameraOpen ? 'secondary' : 'outline'}
-            onClick={() => setCameraOpen((o) => !o)}
-          >
-            <Camera className="h-4 w-4" />
-            {cameraOpen ? 'Hide camera' : 'Measure with camera'}
-            {cameraOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </Button>
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" /> New measurement
-          </Button>
-        </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold tracking-tight">Measurements</h1>
+        <p className="text-sm text-muted-foreground">
+          Capture a new measurement two ways: with your camera, or by typing it
+          in.
+        </p>
       </div>
 
-      {/* Inline camera section */}
-      {cameraOpen && (
-        <Card className="overflow-hidden border-primary/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Camera className="h-4 w-4 text-primary" />
-                Camera measure
-              </CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Place a reference object next to what you&rsquo;re measuring,
-                tap the endpoints, then save it into a new measurement.
-              </p>
-            </div>
-            {lastCapture && (
-              <div className="hidden text-right text-xs text-muted-foreground sm:block">
-                Last capture:{' '}
-                <span className="font-semibold text-foreground">
-                  {lastCapture.lengthCm.toFixed(2)} cm
-                </span>
+      {/* Two choice cards (only shown when nothing is open) */}
+      {mode === null && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ChoiceCard
+            icon={Camera}
+            title="Measure with camera"
+            description="Use a reference object (credit card, A4) and tap two endpoints — we calculate the real distance."
+            cta="Open camera"
+            onClick={() => setMode('camera')}
+          />
+          <ChoiceCard
+            icon={Pencil}
+            title="Write a measurement"
+            description="Enter the length, width, height, customer, and product details manually."
+            cta="Open form"
+            onClick={() => openForm()}
+          />
+        </div>
+      )}
+
+      {/* Inline camera */}
+      {mode === 'camera' && (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Camera className="h-4 w-4 text-primary" />
+                  Camera measure
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Place a reference object next to what you&rsquo;re measuring,
+                  tap two endpoints of the reference, then two of the object.
+                </CardDescription>
               </div>
-            )}
+              <Button variant="ghost" size="sm" onClick={() => setMode(null)}>
+                Back
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <CameraMeasure
               onCapture={(result) => {
-                setLastCapture({ ...result, at: Date.now() })
                 toast.success(
                   `Captured ${result.lengthCm.toFixed(2)} cm — opening form…`,
                 )
-                setCameraOpen(false)
-                setCreating(true)
+                openForm({ length: Number(result.lengthCm.toFixed(2)) })
               }}
-              onCancel={() => setCameraOpen(false)}
+              onCancel={() => setMode(null)}
             />
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder="Search code, customer…"
-                value={search}
-                onChange={(e) => {
-                  setPage(1)
-                  setSearch(e.target.value)
-                }}
-              />
-            </div>
+      {/* Sub-section: created measurements */}
+      <section className="space-y-3 pt-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Created measurements</h2>
+            <p className="text-xs text-muted-foreground">
+              {user?.role === 'admin'
+                ? 'Every measurement in the workspace.'
+                : 'Measurements you created or were assigned.'}
+            </p>
+          </div>
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Filter by customer"
-              value={customer}
+              className="pl-9"
+              placeholder="Search code, customer, product…"
+              value={search}
               onChange={(e) => {
                 setPage(1)
-                setCustomer(e.target.value)
-              }}
-            />
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setPage(1)
-                setStartDate(e.target.value)
-              }}
-            />
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setPage(1)
-                setEndDate(e.target.value)
+                setSearch(e.target.value)
               }}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Dimensions</th>
-                  <th className="px-4 py-3">Qty</th>
-                  <th className="px-4 py-3">Created by</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data === undefined &&
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="px-4 py-3" colSpan={8}>
-                        <Skeleton className="h-6 w-full" />
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3">Code</th>
+                    <th className="px-4 py-3">Customer</th>
+                    <th className="px-4 py-3">Product</th>
+                    <th className="px-4 py-3">Dimensions</th>
+                    <th className="px-4 py-3">Qty</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data === undefined &&
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={i} className="border-b">
+                        <td className="px-4 py-3" colSpan={7}>
+                          <Skeleton className="h-5 w-full" />
+                        </td>
+                      </tr>
+                    ))}
+                  {data && paged.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-10 text-center text-muted-foreground"
+                      >
+                        {search
+                          ? 'No measurements match your search.'
+                          : 'No measurements yet — capture one above.'}
+                      </td>
+                    </tr>
+                  )}
+                  {paged.map((m) => (
+                    <tr
+                      key={m._id}
+                      className="border-b last:border-0 hover:bg-muted/40"
+                    >
+                      <td className="px-4 py-3 font-mono text-xs">
+                        <Badge variant="outline">{m.code}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{m.customerName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {m.phoneNumber}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">{m.productType}</td>
+                      <td className="px-4 py-3">
+                        {m.length} × {m.width} × {m.height} {m.unit}
+                      </td>
+                      <td className="px-4 py-3">{m.quantity}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatDateShort(m.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditing(m)}
+                            disabled={!canEdit(m)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleting(m)}
+                            disabled={!canEdit(m)}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
-                {data && paged.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-10 text-center text-muted-foreground"
-                    >
-                      No measurements match your filters.
-                    </td>
-                  </tr>
-                )}
-                {paged.map((m) => (
-                  <tr
-                    key={m._id}
-                    className="border-b last:border-0 hover:bg-muted/40"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs">
-                      <Badge variant="outline">{m.code}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{m.customerName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {m.phoneNumber}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">{m.productType}</td>
-                    <td className="px-4 py-3">
-                      {m.length} × {m.width} × {m.height} {m.unit}
-                    </td>
-                    <td className="px-4 py-3">{m.quantity}</td>
-                    <td className="px-4 py-3">
-                      {m.creator?.name ?? 'Unknown'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatDateShort(m.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setEditing(m)}
-                          disabled={!canEdit(m)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleting(m)}
-                          disabled={!canEdit(m)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {data && data.length > 0 && (
-            <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">
-              <div>
-                Showing {(page - 1) * PAGE_SIZE + 1}-
-                {Math.min(page * PAGE_SIZE, data.length)} of {data.length}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="px-3">
-                  Page {page} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+                </tbody>
+              </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
 
+            {data && data.length > 0 && (
+              <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">
+                <div>
+                  Showing {(page - 1) * PAGE_SIZE + 1}-
+                  {Math.min(page * PAGE_SIZE, data.length)} of {data.length}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="px-3">
+                    Page {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Write-a-measurement modal */}
       <Modal
-        open={creating}
+        open={formOpen}
         onOpenChange={(o) => {
-          setCreating(o)
-          if (!o) setLastCapture(null)
+          setFormOpen(o)
+          if (!o) setPrefill(null)
         }}
         title="New measurement"
         description={
-          lastCapture
-            ? `Length pre-filled from camera capture (${lastCapture.lengthCm.toFixed(2)} cm).`
+          prefill
+            ? `Length pre-filled from camera capture (${prefill.length.toFixed(2)} cm).`
             : 'Fill in the details below.'
         }
+        className="max-w-2xl"
       >
         <MeasurementForm
-          // Reset internal form when a new capture comes in so the prefill applies
-          key={lastCapture?.at ?? 'fresh'}
+          key={prefill?.at ?? 'fresh'}
           defaultValues={
-            lastCapture
-              ? { length: Number(lastCapture.lengthCm.toFixed(2)), unit: 'cm' }
-              : undefined
+            prefill ? { length: prefill.length, unit: 'cm' } : undefined
           }
-          onSubmit={async (values) => {
-            await handleCreate(values)
-            setLastCapture(null)
-          }}
+          onSubmit={handleSubmit}
           onCancel={() => {
-            setCreating(false)
-            setLastCapture(null)
+            setFormOpen(false)
+            setPrefill(null)
           }}
           submitting={submitting}
         />
       </Modal>
 
+      {/* Edit modal */}
       <Modal
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
         title={editing ? `Edit ${editing.code}` : 'Edit measurement'}
+        className="max-w-2xl"
       >
         {editing && (
           <MeasurementForm
@@ -412,5 +392,42 @@ export default function MeasurementsPage() {
         onConfirm={handleDelete}
       />
     </div>
+  )
+}
+
+function ChoiceCard({
+  icon: Icon,
+  title,
+  description,
+  cta,
+  onClick,
+}: {
+  icon: typeof Camera
+  title: string
+  description: string
+  cta: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group flex h-full flex-col items-start gap-4 rounded-xl border bg-card p-6 text-left shadow-sm transition-all',
+        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
+      )}
+    >
+      <div className="grid h-12 w-12 place-items-center rounded-lg bg-primary/10 text-primary transition-transform group-hover:scale-105">
+        <Icon className="h-6 w-6" />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-primary">
+        {cta}
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </button>
   )
 }

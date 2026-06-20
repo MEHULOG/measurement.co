@@ -427,19 +427,22 @@ function Footer() {
           </div>
           <span>© {new Date().getFullYear()} Measure</span>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           <Link to="/auth?mode=sign-in" className="hover:text-foreground">
             Sign in
           </Link>
           <Link to="/auth?mode=sign-up" className="hover:text-foreground">
             Sign up
           </Link>
-          <a
-            href="#features"
-            className="hover:text-foreground"
-          >
+          <a href="#features" className="hover:text-foreground">
             Features
           </a>
+          <Link to="/terms" className="hover:text-foreground">
+            Terms
+          </Link>
+          <Link to="/privacy" className="hover:text-foreground">
+            Privacy
+          </Link>
         </div>
       </div>
     </footer>

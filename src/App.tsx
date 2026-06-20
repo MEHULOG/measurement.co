@@ -4,6 +4,10 @@ import LandingPage from '@/pages/LandingPage'
 import AuthPage from '@/pages/AuthPage'
 import WelcomePage from '@/pages/WelcomePage'
 import DashboardPage from '@/pages/DashboardPage'
+import OrdersPage from '@/pages/OrdersPage'
+import BillingPage from '@/pages/BillingPage'
+import TermsPage from '@/pages/TermsPage'
+import PrivacyPage from '@/pages/PrivacyPage'
 import MeasurementsPage from '@/pages/MeasurementsPage'
 import ReportsPage from '@/pages/ReportsPage'
 import UsersPage from '@/pages/UsersPage'
@@ -11,13 +15,16 @@ import ProfilePage from '@/pages/ProfilePage'
 import DashboardLayout from '@/layouts/DashboardLayout'
 import { UserBootstrap } from '@/components/UserBootstrap'
 import { RequireAdmin } from '@/components/RequireAdmin'
+import { RequireActiveSubscription } from '@/components/RequireActiveSubscription'
 
 function ProtectedShell() {
   return (
     <>
       <SignedIn>
         <UserBootstrap />
-        <DashboardLayout />
+        <RequireActiveSubscription>
+          <DashboardLayout />
+        </RequireActiveSubscription>
       </SignedIn>
       <SignedOut>
         <RedirectToSignIn />
@@ -33,6 +40,10 @@ export default function App() {
 
       {/* Unified auth page (Sign in + Sign up tabs) */}
       <Route path="/auth" element={<AuthPage />} />
+
+      {/* Legal pages — public */}
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Post-login welcome (create / import an app) */}
       <Route
@@ -63,6 +74,7 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="measurements" element={<MeasurementsPage />} />
+        <Route path="orders" element={<OrdersPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route
           path="users"
@@ -73,6 +85,7 @@ export default function App() {
           }
         />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="billing" element={<BillingPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

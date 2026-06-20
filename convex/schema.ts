@@ -22,6 +22,24 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     role: ROLES,
     createdAt: v.number(),
+
+    // Billing
+    subscriptionStatus: v.optional(
+      v.union(
+        v.literal('trialing'),
+        v.literal('active'),
+        v.literal('past_due'),
+        v.literal('cancelled'),
+        v.literal('expired'),
+      ),
+    ),
+    plan: v.optional(
+      v.union(v.literal('pro_monthly'), v.literal('pro_yearly')),
+    ),
+    trialEndsAt: v.optional(v.number()),
+    currentPeriodEndsAt: v.optional(v.number()),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
   }).index('by_clerk_id', ['clerkId']),
 
   measurements: defineTable({
@@ -61,6 +79,35 @@ export default defineSchema({
     name: v.string(),
     value: v.number(),
   }).index('by_name', ['name']),
+
+  orders: defineTable({
+    // Auto-generated human-readable id like ORD-0001
+    code: v.string(),
+    customerName: v.string(),
+    phoneNumber: v.optional(v.string()),
+    productType: v.string(),
+    quantity: v.number(),
+    totalAmount: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('in_progress'),
+      v.literal('ready'),
+      v.literal('delivered'),
+      v.literal('cancelled'),
+    ),
+    notes: v.optional(v.string()),
+    measurementId: v.optional(v.id('measurements')),
+    createdBy: v.id('users'),
+    deliveredAt: v.optional(v.number()),
+    deliveredBy: v.optional(v.id('users')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_code', ['code'])
+    .index('by_creator', ['createdBy'])
+    .index('by_status', ['status'])
+    .index('by_created_at', ['createdAt']),
 
   apps: defineTable({
     name: v.string(),
