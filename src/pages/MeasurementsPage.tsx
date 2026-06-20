@@ -29,8 +29,10 @@ import {
   MeasurementFormValues,
 } from '@/components/MeasurementForm'
 import { CameraMeasure } from '@/components/CameraMeasure'
+import { FeatureGate } from '@/components/FeatureGate'
 import { formatDateShort } from '@/lib/utils'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useSubscription } from '@/hooks/useSubscription'
 import { cn } from '@/lib/utils'
 import type { MeasurementWithUsers } from '@/types'
 
@@ -135,57 +137,52 @@ export default function MeasurementsPage() {
       </div>
 
       {/* Two choice cards (only shown when nothing is open) */}
-      {mode === null && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ChoiceCard
-            icon={Camera}
-            title="Measure with camera"
-            description="Use a reference object (credit card, A4) and tap two endpoints — we calculate the real distance."
-            cta="Open camera"
-            onClick={() => setMode('camera')}
-          />
-          <ChoiceCard
-            icon={Pencil}
-            title="Write a measurement"
-            description="Enter the length, width, height, customer, and product details manually."
-            cta="Open form"
-            onClick={() => openForm()}
-          />
-        </div>
-      )}
+      {mode === null && <ChoiceCards onCamera={() => setMode('camera')} onWrite={() => openForm()} />}
 
-      {/* Inline camera */}
+      {/* Inline camera — gated to active paid subscribers */}
       {mode === 'camera' && (
-        <Card className="border-primary/30">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Camera className="h-4 w-4 text-primary" />
-                  Camera measure
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  Place a reference object next to what you&rsquo;re measuring,
-                  tap two endpoints of the reference, then two of the object.
-                </CardDescription>
+        <FeatureGate
+          feature="camera measurement"
+          requirePaid
+          description="Capture real-world dimensions from your phone or webcam — no manual data entry."
+          benefits={[
+            'Tap-to-measure with reference scaling (credit card, A4, etc.)',
+            'Auto-fill the measurement form in cm/mm/inch/ft',
+            'Works on desktop and mobile browsers',
+          ]}
+        >
+          <Card className="border-primary/30">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Camera className="h-4 w-4 text-primary" />
+                    Camera measure
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Place a reference object next to what you&rsquo;re
+                    measuring, tap two endpoints of the reference, then two of
+                    the object.
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setMode(null)}>
+                  Back
+                </Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setMode(null)}>
-                Back
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <CameraMeasure
-              onCapture={(result) => {
-                toast.success(
-                  `Captured ${result.lengthCm.toFixed(2)} cm — opening form…`,
-                )
-                openForm({ length: Number(result.lengthCm.toFixed(2)) })
-              }}
-              onCancel={() => setMode(null)}
-            />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <CameraMeasure
+                onCapture={(result) => {
+                  toast.success(
+                    `Captured ${result.lengthCm.toFixed(2)} cm — opening form…`,
+                  )
+                  openForm({ length: Number(result.lengthCm.toFixed(2)) })
+                }}
+                onCancel={() => setMode(null)}
+              />
+            </CardContent>
+          </Card>
+        </FeatureGate>
       )}
 
       {/* Sub-section: created measurements */}
@@ -395,28 +392,65 @@ export default function MeasurementsPage() {
   )
 }
 
+function ChoiceCards({
+  onCamera,
+  onWrite,
+}: {
+  onCamera: () => void
+  onWrite: () => void
+}) {
+  const { data } = useSubscription()
+  const isPro = data?.reason === 'active'
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <ChoiceCard
+        icon={Camera}
+        title="Measure with camera"
+        description="Use a reference object (credit card, A4) and tap two endpoints — we calculate the real distance."
+        cta={isPro ? 'Open camera' : 'Open camera (Pro)'}
+        proRequired={!isPro}
+        onClick={onCamera}
+      />
+      <ChoiceCard
+        icon={Pencil}
+        title="Write a measurement"
+        description="Enter the length, width, height, customer, and product details manually."
+        cta="Open form"
+        onClick={onWrite}
+      />
+    </div>
+  )
+}
+
 function ChoiceCard({
   icon: Icon,
   title,
   description,
   cta,
   onClick,
+  proRequired,
 }: {
   icon: typeof Camera
   title: string
   description: string
   cta: string
   onClick: () => void
+  proRequired?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'group flex h-full flex-col items-start gap-4 rounded-xl border bg-card p-6 text-left shadow-sm transition-all',
+        'group relative flex h-full flex-col items-start gap-4 rounded-xl border bg-card p-6 text-left shadow-sm transition-all',
         'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
       )}
     >
+      {proRequired && (
+        <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700 dark:text-amber-300">
+          Pro
+        </span>
+      )}
       <div className="grid h-12 w-12 place-items-center rounded-lg bg-primary/10 text-primary transition-transform group-hover:scale-105">
         <Icon className="h-6 w-6" />
       </div>

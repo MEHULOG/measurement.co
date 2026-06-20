@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
 import { Footer } from '@/components/Footer'
+import { UpgradeBanner } from '@/components/UpgradeBanner'
 
 export default function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -13,6 +14,8 @@ export default function DashboardLayout() {
         onCloseMobile={() => setMobileOpen(false)}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Full-width banner above the topbar — only renders if no active sub */}
+        <UpgradeBanner />
         <Topbar onOpenMobileMenu={() => setMobileOpen(true)} />
         <div className="flex flex-1 flex-col overflow-y-auto">
           <main className="flex-1 p-4 lg:p-6">

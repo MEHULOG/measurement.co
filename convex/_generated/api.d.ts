@@ -11,6 +11,7 @@
 import type * as activities from "../activities.js";
 import type * as apps from "../apps.js";
 import type * as billing from "../billing.js";
+import type * as http from "../http.js";
 import type * as measurements from "../measurements.js";
 import type * as orders from "../orders.js";
 import type * as reports from "../reports.js";
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   apps: typeof apps;
   billing: typeof billing;
+  http: typeof http;
   measurements: typeof measurements;
   orders: typeof orders;
   reports: typeof reports;

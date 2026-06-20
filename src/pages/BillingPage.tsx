@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useAction, useMutation } from 'convex/react'
+import { useMutation } from 'convex/react'
 import { toast } from 'sonner'
 import {
   Check,
@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Badge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useSubscription } from '@/hooks/useSubscription'
+import { usePolarCheckout } from '@/hooks/usePolarCheckout'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -63,12 +64,11 @@ export default function BillingPage() {
   const demoSuccess = params.get('demo') === 'success'
 
   const { data, isLoading } = useSubscription()
-  const startCheckout = useAction(api.billing.startCheckout)
+  const { open: openCheckout, opening: checkingOut } = usePolarCheckout()
   const cancel = useMutation(api.billing.cancel)
   const dev_expire = useMutation(api.billing.dev_expireTrial)
   const dev_reset = useMutation(api.billing.dev_resetTrial)
 
-  const [checkingOut, setCheckingOut] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
 
   useEffect(() => {
@@ -76,19 +76,7 @@ export default function BillingPage() {
   }, [demoSuccess])
 
   async function handleSubscribe(plan: 'pro_monthly' | 'pro_yearly') {
-    setCheckingOut(plan)
-    try {
-      const result = await startCheckout({ plan })
-      if (result.mode === 'stripe') {
-        window.location.href = result.url
-      } else {
-        toast.success('Demo subscription activated')
-      }
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Checkout failed')
-    } finally {
-      setCheckingOut(null)
-    }
+    await openCheckout(plan)
   }
 
   return (

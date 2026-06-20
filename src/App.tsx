@@ -15,16 +15,13 @@ import ProfilePage from '@/pages/ProfilePage'
 import DashboardLayout from '@/layouts/DashboardLayout'
 import { UserBootstrap } from '@/components/UserBootstrap'
 import { RequireAdmin } from '@/components/RequireAdmin'
-import { RequireActiveSubscription } from '@/components/RequireActiveSubscription'
 
 function ProtectedShell() {
   return (
     <>
       <SignedIn>
         <UserBootstrap />
-        <RequireActiveSubscription>
-          <DashboardLayout />
-        </RequireActiveSubscription>
+        <DashboardLayout />
       </SignedIn>
       <SignedOut>
         <RedirectToSignIn />

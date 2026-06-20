@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/Select'
 import { OrderForm, OrderFormValues } from '@/components/OrderForm'
+import { FeatureGate } from '@/components/FeatureGate'
 import { formatDateShort } from '@/lib/utils'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { cn } from '@/lib/utils'
@@ -63,6 +64,24 @@ const TABS: { value: Tab; label: string }[] = [
 ]
 
 export default function OrdersPage() {
+  return (
+    <FeatureGate
+      feature="Orders"
+      requirePaid
+      description="Track customer orders end-to-end with status workflow, delivery audit, and team-wide visibility."
+      benefits={[
+        'Pending → in progress → ready → delivered workflow',
+        'Inline status changes and one-click "mark delivered"',
+        'Auto-generated order codes (ORD-####) and audit log',
+        'Role-aware list — employees see only their own; admins see everything',
+      ]}
+    >
+      <OrdersPageInner />
+    </FeatureGate>
+  )
+}
+
+function OrdersPageInner() {
   const { user } = useCurrentUser()
   const { isAuthenticated } = useConvexAuth()
   const [tab, setTab] = useState<Tab>('all')

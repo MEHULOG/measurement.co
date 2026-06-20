@@ -40,7 +40,13 @@ export default defineSchema({
     currentPeriodEndsAt: v.optional(v.number()),
     stripeCustomerId: v.optional(v.string()),
     stripeSubscriptionId: v.optional(v.string()),
-  }).index('by_clerk_id', ['clerkId']),
+    // Polar billing IDs (current provider)
+    polarCustomerId: v.optional(v.string()),
+    polarSubscriptionId: v.optional(v.string()),
+  })
+    .index('by_clerk_id', ['clerkId'])
+    .index('by_polar_customer', ['polarCustomerId'])
+    .index('by_polar_subscription', ['polarSubscriptionId']),
 
   measurements: defineTable({
     // Auto-generated human-readable id like MES-0001

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { UserProfile } from '@clerk/clerk-react'
-import { useAction, useMutation } from 'convex/react'
+import { useMutation } from 'convex/react'
 import { toast } from 'sonner'
 import {
   Clock,
@@ -25,32 +25,20 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProBadge } from '@/components/ProBadge'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useSubscription } from '@/hooks/useSubscription'
+import { usePolarCheckout } from '@/hooks/usePolarCheckout'
 import { formatDate } from '@/lib/utils'
 
 export default function ProfilePage() {
   const { user } = useCurrentUser()
   const { data: sub, isLoading: subLoading } = useSubscription()
-  const startCheckout = useAction(api.billing.startCheckout)
+  const { open: openCheckout, opening: checkingOut } = usePolarCheckout()
   const cancel = useMutation(api.billing.cancel)
-  const [checkingOut, setCheckingOut] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
 
   const isPro = sub?.reason === 'active'
 
   async function handleSubscribe(plan: 'pro_monthly' | 'pro_yearly') {
-    setCheckingOut(plan)
-    try {
-      const result = await startCheckout({ plan })
-      if (result.mode === 'stripe') {
-        window.location.href = result.url
-      } else {
-        toast.success('Subscription activated')
-      }
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Checkout failed')
-    } finally {
-      setCheckingOut(null)
-    }
+    await openCheckout(plan)
   }
 
   return (
